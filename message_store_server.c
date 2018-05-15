@@ -180,22 +180,29 @@ int id = arg.message_identifier;
 int i;
 struct pending_messages msg ;
 //locate message
+/*
 for( i = 0;i<new_clnt->num_messages;i++){
 	if (msg.id==id){
 		 msg = new_clnt->list[i];
 		 break;
 		}
 	}
+	* */
+	strcpy(*result, new_clnt->list[new_clnt->num_messages-1].message);
+	printf("MESSAGE get message() : %s \n" , ))
+	new_clnt->num_messages--;
+	
 	//shift list, as message could technically be in the middle.
 	
 	//have to shift all the messages to the left once we have taken the desired pending message out...
 	//hope this is correct
-	for(i; i<new_clnt->num_messages-1;i++){
+	/*for(i; i<new_clnt->num_messages-1;i++){
 		 new_clnt->list[i] = new_clnt->list[i+1];
 		
 		
 		}
-new_clnt->num_messages--;
+		* */
+
 //we have taken client out of the queue. we will take the message out of pending messages, and place client back on queue
 pthread_mutex_lock(&mutexQueue);//Protect queue
 			queue_put(new_clnt); //queue_get delete the user from the queue, we'll enqueue it again
@@ -203,7 +210,7 @@ pthread_mutex_lock(&mutexQueue);//Protect queue
 			
 			
 //pass message back to client. make sure this is correct with the pointer. possible segmentation fault
-	 strcpy(*result,msg.message);
+
 			
 	return retval;
 }
@@ -276,7 +283,9 @@ strncpy(client_address.sin_zero, clnt.sockaddr_in_sin_zerp, 8);
 			*result =  0;//success
 			
 			printf("Connect Succesful: %s \n", clnt.user);
+			
 			pthread_mutex_lock(&mutexQueue);
+			printf("CONNECT Num MSG: %i \n", new_clnt->num_messages);
 			 queue_put (new_clnt);
 			pthread_mutex_unlock(&mutexQueue);//Unprotect queue
 
@@ -397,13 +406,56 @@ pthread_mutex_lock(&mutexQueue);//Protect queue
 bool_t
 get_all_messages_1_svc(arguments2 *argp, client_messages *result, struct svc_req *rqstp)
 {
-	bool_t retval;
+	
+	result = malloc(sizeof(struct pending_messages)*256);
+	bool_t retval = TRUE;
 
-	/*
-	 * insert server code here
-	 */
+		arguments2 arg = *argp;
+	
+//going to add the messages to recipients pending messages
 
-	return retval;
+				client_messages pending_msgs;
+			pthread_mutex_lock(&mutexQueue);//Protect queue
+			struct client_queue *new_clnt = queue_get(arg.user);
+			pthread_mutex_unlock(&mutexQueue);//Unprotect queue
+			
+			//cant do this bc noot technically same struct.
+			//have to do each field...
+			for(int i = 0;i<new_clnt->num_messages;i++){
+				//str copy not assign...
+				
+				strncpy(pending_msgs.list[i].receiver, new_clnt->list[i].receiver, 256);
+				strncpy(pending_msgs.list[i].sender, new_clnt->list[i].sender, 256);
+				strncpy(pending_msgs.list[i].message, new_clnt->list[i].message, 256);
+				pending_msgs.list[i].id = new_clnt->list[i].id;
+			printf("Message %s \n", pending_msgs.list[i].message);
+				}
+				
+				//set pending_messages list back to empty
+				new_clnt->num_messages = 0;
+				
+			//	memset(new_clnt->list, '\0', sizeof(new_clnt->list));
+			
+			
+			//set new list = to empty and num_messages to zero.
+			
+			 pthread_mutex_lock(&mutexQueue);//Protect queue
+		 queue_put(new_clnt); //queue_get delete the user from the queue, we'll enqueue it again
+	pthread_mutex_unlock(&mutexQueue);//Unprotect queue
+//strcpy(*result, pending_msgs);
+//(*result).list = pending_msgs.list;
+ //memcpy(result->list, pending_msgs.list, sizeof(pending_msgs));
+ for(int i = 0;i<256;i++){
+				//str copy not assign...
+				strncpy(result->list[i].sender, pending_msgs.list[i].sender, 256);
+				strncpy(result->list[i].receiver, new_clnt->list[i].receiver, 256);
+				strncpy(result->list[i].message, new_clnt->list[i].message, 256);
+				result->list[i].id = new_clnt->list[i].id;
+				printf("Message %s \n", result->list[i].message);
+				}
+ //*result = NULL;
+			printf("returning retval \n");
+	return TRUE;
 }
 
 int

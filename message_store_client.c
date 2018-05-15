@@ -198,10 +198,16 @@ if(i==10){
 	*(client *)resp = result_10;
 }
 if(i==11){	
+	//race condition?
+	get_all_messages_1_arg = arg2;
+	
 	retval_11 = get_all_messages_1(&get_all_messages_1_arg, &result_11, clnt);
 	if (retval_11 != RPC_SUCCESS) {
 		clnt_perror (clnt, "call failed");
 	}
+	*(client_messages *) resp = result_11;
+	
+	
 }	
 #ifndef	DEBUG
 	clnt_destroy (clnt);
@@ -490,13 +496,23 @@ strncpy(client_info_rpc.sockaddr_in_sin_zerp, args_local.client_address.sin_zero
 			printf("PENDING MESSAGES: \n");
 		//now we get pending messages.
 		
-		
+		client_messages * msgs= malloc(sizeof(struct pending_messages)*256);
 		
 		//will have to get pending messages. for now just simple connect.
+		//get all messages.
+		int * num_messages = malloc(sizeof(int));
 		
+		//arg2 still has name of the user connecting. will get num of messages pending
+		message_store_1(args_local.host,5, arg1, arg2,client_info_rpc ,(void * )num_messages);
+		printf("NUM MESSAGES for %s : %i \n", arg2.user,*num_messages);
+		while(*num_messages>0){ //only pring messages array if it contains more than 1 pending_msg
+		char ** responsemsg;
+		strcpy(arg2.user, username);
+		message_store_1(args_local.host,6, arg1, arg2,client_info_rpc ,(void * )responsemsg);
+		printf("Message: %s \n", *responsemsg);
 		
-		
-		
+		message_store_1(args_local.host,5, arg1, arg2,client_info_rpc ,(void * )num_messages);
+		}
 		/*
 		pthread_mutex_lock(&mutexQueue);//Protect queue
 		res = check_ifexists(username);
