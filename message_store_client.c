@@ -150,8 +150,11 @@ if(i==6){
 	if (retval_6 != RPC_SUCCESS) {
 		clnt_perror (clnt, "call failed");
 	}
+//result_6 prints correctly. test resp
 	//string of actual message
-	*(char *) resp = result_6;
+	*(char **) resp = result_6;
+	//	printf("Message here %s \n", (char *)resp );
+	
 }
 
 	//NEW ONES
@@ -503,42 +506,83 @@ strncpy(client_info_rpc.sockaddr_in_sin_zerp, args_local.client_address.sin_zero
 		int * num_messages = malloc(sizeof(int));
 		
 		//arg2 still has name of the user connecting. will get num of messages pending
+		strcpy(arg2.user, username);
 		message_store_1(args_local.host,5, arg1, arg2,client_info_rpc ,(void * )num_messages);
 		printf("NUM MESSAGES for %s : %i \n", arg2.user,*num_messages);
 		while(*num_messages>0){ //only pring messages array if it contains more than 1 pending_msg
-		char ** responsemsg;
+		char ** responsemsg = malloc(256);
 		strcpy(arg2.user, username);
 		message_store_1(args_local.host,6, arg1, arg2,client_info_rpc ,(void * )responsemsg);
 		printf("Message: %s \n", *responsemsg);
 		
 		message_store_1(args_local.host,5, arg1, arg2,client_info_rpc ,(void * )num_messages);
-		}
-		/*
-		pthread_mutex_lock(&mutexQueue);//Protect queue
-		res = check_ifexists(username);
-		pthread_mutex_unlock(&mutexQueue);//Unprotect queue
-		if (res == 0) {  //User exists
-			pthread_mutex_lock(&mutexQueue);//Protect queue
-			struct client_queue *client = queue_get(username); //queue_get delete the user from the queue, we'll enqueue it again
-			pthread_mutex_unlock(&mutexQueue);//Unprotect queue
-			if (client->status == DISCONNECTED) { 
-				client->client_address = args_local.client_address;
-				client->client_port = atoi(port);
-				client->status = CONNECTED;
-				pthread_mutex_lock(&mutexQueue);//Protect queue
-				res = queue_put(client);//I enqueue the user updated.
-				pthread_mutex_unlock(&mutexQueue);//Unprotect queue
-				if ( res == 0 ) {
-					printf("s> CONNECT %s OK\n", username);
-				}
-				else {
-					res = 3;
-					printf("s> CONNECT %s FAIL\n",username);
-				}
-				if (send(args_local.client_sock, &res, sizeof(char), 0) == -1){
-					perror("Error sending to client\n");
+		
+		//send messages one by one.
+	//get client info.
+		client * reciever_info = malloc(sizeof(struct client));
+			
+			//arg2.user still has reciever.
+			message_store_1(args_local.host,10, arg1, arg2,client_info_rpc ,(void * )reciever_info);
+			
+			int sd = socket(AF_INET, SOCK_STREAM, 0); //Create the socket
+               			if (sd == -1) {
+        				perror("Could not create socket\n");
 					return;
 				}
+			
+			//connect to recipient( info retrieved from RPC server).
+			struct sockaddr_in addr;
+				bzero((char*)&addr, sizeof(addr));
+                		addr.sin_family = AF_INET;
+                		addr.sin_port = htons(reciever_info->client_port);
+               			addr.sin_addr.s_addr = reciever_info->in_addr_s_addr;
+                		
+                		
+                		//now connect to reciever client:
+                		if (connect(sd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+					//error connecting, mark client disconnected.
+					message_store_1(args_local.host,8, arg1, arg2,client_info_rpc ,(void * )resp);
+                    			perror("connect failed. Error\n");    			
+                    			return;
+                		}
+                		//here is actual sending of message between 2 connected clients. protocol same as it was in part 1.
+                		res = 0;
+                		if (send(args_local.client_sock, &res, sizeof(char), 0) < 0) {
+                  	 		perror("Error sending message\n");
+                  			return;
+              			}
+              			char msg_id[MAXMESSAGE];
+						sprintf (msg_id, "%d", identifier);
+						if (send(args_local.client_sock, &msg_id, strlen(msg_id)+1, 0) < 0) {					
+						perror("Error sending message\n");
+						return;
+						}
+						char send_message[MAXMESSAGE];
+						strcpy(send_message, "SEND_MESSAGE");
+						if (send(sd, &send_message, strlen(send_message)+1, 0) < 0) {
+						perror("Error sending message\n");
+						return;
+						}
+						if (send(sd, &sender, strlen(sender)+1, 0) < 0) {
+						perror("Error sending message\n");
+						return;
+						}
+						if (send(sd, &msg_id, strlen(msg_id)+1, 0) < 0) {					
+						perror("Error sending message\n");
+						return;
+						}
+						strcpy(message , *responsemsg);
+						if (send(sd, &message, strlen(message)+1, 0) < 0) {
+						perror("Error sending message\n");
+						return;
+						}
+                		printf("s> SEND MESSAGE %d FROM %s TO %s\n", identifier, sender, receiver);
+						identifier++;
+						close(sd);
+		
+		//end while num_messsages>0
+		}
+		/*
 			
 				//RECEIVE THE PENDING MESSAGES
 				while (client->num_messages > 0) {

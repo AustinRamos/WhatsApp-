@@ -188,20 +188,21 @@ for( i = 0;i<new_clnt->num_messages;i++){
 		}
 	}
 	* */
-	strcpy(*result, new_clnt->list[new_clnt->num_messages-1].message);
-	printf("MESSAGE get message() : %s \n" , ))
+	char * res = malloc(256);
+	strcpy(res, new_clnt->list[0].message);
+//	printf("MESSAGE get message() : %s \n" , res);
 	new_clnt->num_messages--;
 	
 	//shift list, as message could technically be in the middle.
 	
 	//have to shift all the messages to the left once we have taken the desired pending message out...
 	//hope this is correct
-	/*for(i; i<new_clnt->num_messages-1;i++){
+	for(i= 0; i<new_clnt->num_messages;i++){
 		 new_clnt->list[i] = new_clnt->list[i+1];
 		
 		
 		}
-		* */
+		
 
 //we have taken client out of the queue. we will take the message out of pending messages, and place client back on queue
 pthread_mutex_lock(&mutexQueue);//Protect queue
@@ -210,8 +211,11 @@ pthread_mutex_lock(&mutexQueue);//Protect queue
 			
 			
 //pass message back to client. make sure this is correct with the pointer. possible segmentation fault
-
-			
+*result = res;
+//s
+//printf("*result  strcpy: %s \n", *result);
+		//	strcpy(*result , res);
+			//printf("*result after strcpy: %s \n", *result);
 	return retval;
 }
 
